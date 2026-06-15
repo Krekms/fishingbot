@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎣 Fishing Bot - Анализ видео рыбалки</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 3em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .subtitle {
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+
+    .upload-box {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .drop-zone {
+      border: 3px dashed #667eea;
+      border-radius: 10px;
+      padding: 40px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      background: #f8f9ff;
+    }
+
+    .drop-zone.drag-over {
+      background: #e8ecff;
+      border-color: #764ba2;
+      transform: scale(1.02);
+    }
+
+    .drop-zone-text {
+      font-size: 1.1em;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .drop-zone-small {
+      font-size: 0.9em;
+      color: #666;
+    }
+
+    #videoInput {
+      display: none;
+    }
+
+    .button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      display: none;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .results {
+      display: none;
+      gap: 30px;
+    }
+
+    .result-card {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+
+    .result-card h2 {
+      color: #667eea;
+      margin-bottom: 20px;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    .fish-species {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9ff;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+
+    .fish-species h3 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      font-size: 0.95em;
+    }
+
+    .stat-label {
+      font-weight: 600;
+      color: #666;
+    }
+
+    .stat-value {
+      color: #333;
+    }
+
+    .advice-list {
+      list-style: none;
+      margin: 15px 0;
+    }
+
+    .advice-list li {
+      padding: 10px 0;
+      padding-left: 25px;
+      position: relative;
+      color: #333;
+    }
+
+    .advice-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    .summary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 1.1em;
+      line-height: 1.6;
+    }
+
+    .rating {
+      display: flex;
+      gap: 5px;
+      margin: 10px 0;
+    }
+
+    .star {
+      color: #ffc107;
+      font-size: 1.3em;
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border-left: 4px solid #c33;
+    }
+
+    .success {
+      background: #efe;
+      color: #3c3;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border-left: 4px solid #3c3;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2em;
+      }
+
+      .upload-box {
+        padding: 20px;
+      }
+
+      .drop-zone {
+        padding: 20px;
+      }
+
+      .results {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎣 Fishing Bot</h1>
+      <p class="subtitle">AI-анализ видео рыбалки</p>
+    </header>
+
+    <div class="upload-box">
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-zone-text">📹 Перетащи видео сюда или нажми для загрузки</div>
+        <div class="drop-zone-small">Поддерживаемые форматы: MP4, WebM, MOV, AVI</div>
+        <input type="file" id="videoInput" accept="video/*">
+        <button class="button" onclick="document.getElementById('videoInput').click()">
+          Выбрать видео
+        </button>
+      </div>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>🤖 Анализирую видео... Подождите, это может занять некоторое время</p>
+      </div>
+
+      <div id="message"></div>
+    </div>
+
+    <div class="results" id="results">
+      <div class="result-card">
+        <h2>🐟 Виды рыб</h2>
+        <div id="fishSpecies"></div>
+      </div>
+
+      <div class="result-card">
+        <h2>🎣 Техника ловли</h2>
+        <div id="technique"></div>
+        <div id="equipment"></div>
+      </div>
+
+      <div class="result-card">
+        <h2>💡 Советы и рекомендации</h2>
+        <div id="advice"></div>
+      </div>
+
+      <div class="result-card">
+        <h2>📊 Итоговый анализ</h2>
+        <div class="summary" id="summary"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const videoInput = document.getElementById('videoInput');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+    const message = document.getElementById('message');
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    videoInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    async function handleFile(file) {
+      const formData = new FormData();
+      formData.append('video', file);
+
+      loading.style.display = 'block';
+      results.style.display = 'none';
+      message.innerHTML = '';
+
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ошибка: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        displayResults(data.analysis);
+
+        message.innerHTML = '<div class="success">✅ Анализ завершен успешно!</div>';
+      } catch (error) {
+        message.innerHTML = `<div class="error">❌ Ошибка: ${error.message}</div>`;
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    function displayResults(analysis) {
+      // Fish species
+      let fishHtml = '';
+      if (analysis.fish_species && analysis.fish_species.length > 0) {
+        analysis.fish_species.forEach(fish => {
+          fishHtml += `
+            <div class="fish-species">
+              <h3>${fish.name}</h3>
+              <div class="stat">
+                <span class="stat-label">Научное название:</span>
+                <span class="stat-value">${fish.scientific_name}</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Уверенность:</span>
+                <span class="stat-value">${(fish.confidence * 100).toFixed(0)}%</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Размер:</span>
+                <span class="stat-value">${fish.size_estimate}</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Поведение:</span>
+                <span class="stat-value">${fish.behavior}</span>
+              </div>
+            </div>
+          `;
+        });
+      }
+      document.getElementById('fishSpecies').innerHTML = fishHtml;
+
+      // Technique
+      let techniqueHtml = '';
+      if (analysis.fishing_technique) {
+        const tech = analysis.fishing_technique;
+        techniqueHtml = `
+          <div class="fish-species">
+            <div class="stat">
+              <span class="stat-label">Метод:</span>
+              <span class="stat-value">${tech.method}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Описание:</span>
+              <span class="stat-value">${tech.technique_detail}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Сложность:</span>
+              <span class="stat-value">${tech.difficulty_level}</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Эффективность:</span>
+              <span class="stat-value">${tech.effectiveness}/10</span>
+            </div>
+          </div>
+        `;
+      }
+      document.getElementById('technique').innerHTML = techniqueHtml;
+
+      // Equipment
+      let equipmentHtml = '';
+      if (analysis.equipment) {
+        const eq = analysis.equipment;
+        equipmentHtml = `
+          <div class="fish-species">
+            <h3>Снасть и оборудование</h3>
+            ${eq.rod ? `<div class="stat"><span class="stat-label">Удилище:</span><span class="stat-value">${eq.rod}</span></div>` : ''}
+            ${eq.reel ? `<div class="stat"><span class="stat-label">Катушка:</span><span class="stat-value">${eq.reel}</span></div>` : ''}
+            ${eq.line ? `<div class="stat"><span class="stat-label">Леска:</span><span class="stat-value">${eq.line}</span></div>` : ''}
+            ${eq.lure ? `<div class="stat"><span class="stat-label">Приманка:</span><span class="stat-value">${eq.lure}</span></div>` : ''}
+            ${eq.other ? `<div class="stat"><span class="stat-label">Прочее:</span><span class="stat-value">${eq.other}</span></div>` : ''}
+          </div>
+        `;
+      }
+      document.getElementById('equipment').innerHTML = equipmentHtml;
+
+      // Advice
+      let adviceHtml = '';
+      if (analysis.advice) {
+        adviceHtml = `
+          <h3>Советы по улову</h3>
+          <ul class="advice-list">
+            ${analysis.advice.tips.map(tip => `<li>${tip}</li>`).join('')}
+          </ul>
+          ${analysis.advice.improvements ? `
+            <h3>Что можно улучшить</h3>
+            <ul class="advice-list">
+              ${analysis.advice.improvements.map(imp => `<li>${imp}</li>`).join('')}
+            </ul>
+          ` : ''}
+          <div class="stat">
+            <span class="stat-label">Лучшие условия:</span>
+            <span class="stat-value">${analysis.advice.best_conditions}</span>
+          </div>
+        `;
+      }
+      document.getElementById('advice').innerHTML = adviceHtml;
+
+      // Summary
+      let stars = '';
+      const rating = analysis.success_rate || 5;
+      for (let i = 0; i < rating; i++) {
+        stars += '⭐';
+      }
+
+      document.getElementById('summary').innerHTML = `
+        <div style="margin-bottom: 15px;">
+          ${stars}
+          <span style="margin-left: 10px; font-size: 0.9em;">${rating}/10</span>
+        </div>
+        <p>${analysis.summary}</p>
+      `;
+
+      results.style.display = 'grid';
+      results.style.gridTemplateColumns = 'repeat(auto-fit, minmax(400px, 1fr))';
+    }
+  </script>
+</body>
+</html>
